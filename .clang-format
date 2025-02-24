@@ -1,0 +1,8 @@
+BasedOnStyle: Google
+AlignTrailingComments: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
+ColumnLimit: 200
+BreakBeforeBraces: Attach
