@@ -38,11 +38,11 @@ Remond::~Remond() {
 }
 
 bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)()) {
-  SLAVE_ID = slaveID;
-  node.begin(SLAVE_ID, serial);
+  //SLAVE_ID = slaveID;
+  node.begin(slaveID, serial);
   node.preTransmission(_preTransmission);
   node.postTransmission(_postTransmission);
-  int8_t mbRet = readOtherParams();
+  uint8_t mbRet = readOtherParams();
   if (mbRet != node.ku8MBSuccess) {
     log_w("Failed to read other parameters. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
     ACTIVE = false;
@@ -139,6 +139,7 @@ uint16_t Remond::readMeasurements() {
 
 uint8_t Remond::readOtherParams() {
   // read the next 19 registers starting from MODE
+  log_d("Reading other parameters from address: 0x%04X", ADDRESS_OF_MODE);
   uint16_t reg[19] = {0};
   uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MODE, 19, reg);
   if (mbRet == node.ku8MBSuccess) {

@@ -71,7 +71,7 @@ class Remond {
 
  private:
   
-  uint8_t SLAVE_ID;
+  //uint8_t SLAVE_ID;
   ModbusMaster node;
   float pH = -1.0, ORP = -1.0, temperature = -1.0, current = -1.0;
   float pHUpperLimit = -1.0, pHLowerLimit = -1.0, pHOffset = -1.0, ORPUpperLimit = -1.0, ORPLowerLimit = -1.0, ORPOffset = -1.0, temperatureUpperLimit = -1.0, temperatureLowerLimit = -1.0,
