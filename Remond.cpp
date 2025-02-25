@@ -9,17 +9,24 @@ Remond::~Remond() {
   // Destructor code here
 }
 
-void Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)()) {
+bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)()) {
   SLAVE_ID = slaveID;
   node.begin(SLAVE_ID, serial);
   node.preTransmission(_preTransmission);
   node.postTransmission(_postTransmission);
-  readOtherParams();
+  int8_t mbRet = readOtherParams();
+  if (mbRet != node.ku8MBSuccess) {
+    log_w("Failed to read other parameters. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    ACTIVE = false;
+    return false;
+  }
+  ACTIVE = true;
   delay(MIN_DELAY_BETWEEN_READS);
   readCalibrationParams();
   delay(MIN_DELAY_BETWEEN_READS);
   readMeasurements();
   delay(MIN_DELAY_BETWEEN_READS);
+  return true;
 }
 
 uint8_t Remond::readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *reg) {
@@ -102,7 +109,7 @@ uint16_t Remond::readMeasurements() {
   return warning;
 }
 
-uint16_t Remond::readOtherParams() {
+uint8_t Remond::readOtherParams() {
   // read the next 19 registers starting from MODE
   uint16_t reg[19] = {0};
   uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_MODE, 19, reg);
@@ -139,7 +146,7 @@ uint16_t Remond::readOtherParams() {
   return mbRet;
 }
 
-uint16_t Remond::readCalibrationParams() {
+uint8_t Remond::readCalibrationParams() {
   // read the next 10 registers starting from ORP calibration value
   uint16_t reg[12] = {0};
   uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_ORP_CALIBRATION_VALUE, 12, reg);

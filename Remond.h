@@ -33,7 +33,7 @@ class Remond {
  public:
   Remond();
   ~Remond();
-  void begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)());
+  bool begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)());
   uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
   float readFloat(uint16_t address);
   uint8_t writeFloat(uint16_t address, float value);
@@ -46,7 +46,7 @@ class Remond {
   float getCurrent() { return current; }
   uint16_t getWarning() { return warning; }
 
-  uint16_t readOtherParams();
+  uint8_t readOtherParams();
   char *getMode() { return modeDescription[mode]; }
   float getpHUpperLimit() { return pHUpperLimit; }
   float getpHLowerLimit() { return pHLowerLimit; }
@@ -61,7 +61,7 @@ class Remond {
   uint16_t getDeviceAddress() { return deviceAddress; }
   char *getBaudRate() { return baudDescription[baudRate]; }
 
-  uint16_t readCalibrationParams();
+  uint8_t readCalibrationParams();
   float getORPCalibrationValue() { return ORPCalibrationValue; }
   float getCalibrationSlope() { return calibrationSlope; }
   char *getZeroPointCalibrationSolution() { return zeroPointCalibrationSolutionDescription[zeroPointCalibrationSolution]; }
@@ -95,7 +95,10 @@ class Remond {
   const char *getModbusErrorDescription(uint8_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
 
+  bool ACTIVE = true;
+
  private:
+  
   uint8_t SLAVE_ID;
   ModbusMaster node;
   float pH = -1.0, ORP = -1.0, temperature = -1.0, current = -1.0;
