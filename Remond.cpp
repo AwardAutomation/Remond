@@ -1,5 +1,33 @@
 #include <Remond.h>
 
+#define ADDRESS_OF_PH 0x0001
+#define ADDRESS_OF_TEMPERATURE 0x0003
+#define ADDRESS_OF_CURRENT 0X0005
+#define ADDRESS_OF_WARNING 0x0007          // 00 = no warning
+#define ADDRESS_OF_MODE 0x0008             // 00 = pH, 01 = ORP
+#define ADDRESS_OF_PH_UPPER_LIMIT 0x000A   // corresponds to 20mA upper limit
+#define ADDRESS_OF_PH_LOWER_LIMIT 0x000C   // corresponds to 4mA lower limit
+#define ADDRESS_OF_PH_OFFSET 0x0012        // adjust measured value
+#define ADDRESS_OF_ORP_UPPER_LIMIT 0x000A  // corresponds to 20mA upper limit
+#define ADDRESS_OF_ORP_LOWER_LIMIT 0x000C  // corresponds to 4mA lower limit
+#define ADDRESS_OF_ORP_OFFSET 0x0012       // adjust measured value
+#define ADDRESS_OF_TEMPERATURE_UPPER_LIMIT 0x000E
+#define ADDRESS_OF_TEMPERATURE_LOWER_LIMIT 0x0010
+#define ADDRESS_OF_TEMPERATURE_OFFSET 0x0014
+#define ADDRESS_OF_DAMPING_COEFFICIENT 0x0016
+#define ADDRESS_OF_DEVICE_ADDRESS 0x0019
+#define ADDRESS_OF_BAUD_RATE 0x001A
+#define ADDRESS_OF_FACTORY_RESET 0x001B
+#define ADDRESS_OF_ORP_CALIBRATION_VALUE 0x0030
+#define ADDRESS_OF_CALIBRATION_SLOPE 0x0034
+#define ADDRESS_OF_ZERO_POINT_CALIBRATION_SOLUTION 0x0036  // 00 = pH 7.00, 01 = pH 6.86
+#define ADDRESS_OF_SLOPE_CALIBRATION_SOLUTION 0x0038       // 00 = pH 1.68, 01 = pH 4.01, 02 = 9.18, 03 = 10.01, 04 = 12.45
+#define ADDRESS_OF_MANUAL_TEMPERATURE 0x003A
+#define ADDRESS_OF_ZERO_CONFIRMATION 0x003E
+#define ADDRESS_OF_SLOPE_CONFIRMATION 0x003F
+#define ADDRESS_OF_MEASURED_AD 0x0066
+#define MIN_DELAY_BETWEEN_READS 5
+
 float regToFloat(uint16_t AB, uint16_t CD);
 uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len);
 
@@ -87,7 +115,7 @@ uint32_t Remond::readInteger32(uint16_t address) {
 uint16_t Remond::readMeasurements() {
   // read the first 6 registers
   uint16_t reg[8] = {0};
-  uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_PH, 8, reg);
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_PH, 8, reg);
   if (mbRet == node.ku8MBSuccess) {
     mode = reg[7];  // copy mode
     if (mode == 0x00) {
@@ -112,7 +140,7 @@ uint16_t Remond::readMeasurements() {
 uint8_t Remond::readOtherParams() {
   // read the next 19 registers starting from MODE
   uint16_t reg[19] = {0};
-  uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_MODE, 19, reg);
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MODE, 19, reg);
   if (mbRet == node.ku8MBSuccess) {
     otherParamsValid = true;
     mode = reg[0];  // copy mode
@@ -149,7 +177,7 @@ uint8_t Remond::readOtherParams() {
 uint8_t Remond::readCalibrationParams() {
   // read the next 10 registers starting from ORP calibration value
   uint16_t reg[12] = {0};
-  uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_ORP_CALIBRATION_VALUE, 12, reg);
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_ORP_CALIBRATION_VALUE, 12, reg);
   if (mbRet == node.ku8MBSuccess) {
     ORPCalibrationValue = regToFloat(reg[1], reg[0]);  // convert ORP calibration value to float
     calibrationSlope = regToFloat(reg[5], reg[4]);     // copy calibration slope
@@ -164,7 +192,7 @@ uint8_t Remond::readCalibrationParams() {
 
 // 0x00 = pH, 0x01 = ORP
 uint8_t Remond::setMode(uint8_t _mode) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_MODE, mode);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_MODE, mode);
   if (mbRet == node.ku8MBSuccess) mode = _mode;
   return mbRet;
 }
@@ -174,7 +202,7 @@ uint8_t Remond::setpHUpperLimit(float _pH) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_PH_UPPER_LIMIT, _pH);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_PH_UPPER_LIMIT, _pH);
   if (mbRet == node.ku8MBSuccess) pHUpperLimit = _pH;
   return mbRet;
 }
@@ -184,7 +212,7 @@ uint8_t Remond::setpHLowerLimit(float _pH) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_PH_LOWER_LIMIT, _pH);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_PH_LOWER_LIMIT, _pH);
   if (mbRet == node.ku8MBSuccess) pHLowerLimit = _pH;
   return mbRet;
 }
@@ -194,7 +222,7 @@ uint8_t Remond::setpHOffset(float _pH) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_PH_OFFSET, _pH);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_PH_OFFSET, _pH);
   if (mbRet == node.ku8MBSuccess) pHOffset = _pH;
   return mbRet;
 }
@@ -204,7 +232,7 @@ uint8_t Remond::setORPUpperLimit(float _ORP) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_ORP_UPPER_LIMIT, _ORP);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_ORP_UPPER_LIMIT, _ORP);
   if (mbRet == node.ku8MBSuccess) ORPUpperLimit = _ORP;
   return mbRet;
 }
@@ -214,7 +242,7 @@ uint8_t Remond::setORPLowerLimit(float _ORP) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_ORP_LOWER_LIMIT, _ORP);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_ORP_LOWER_LIMIT, _ORP);
   if (mbRet == node.ku8MBSuccess) ORPLowerLimit = _ORP;
   return mbRet;
 }
@@ -224,88 +252,88 @@ uint8_t Remond::setORPOffset(float _ORP) {
     log_e("Invalid mode: 0x%02X %s", mode, modeDescription[mode]);
     return node.ku8MBIllegalFunction;
   }
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_ORP_OFFSET, _ORP);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_ORP_OFFSET, _ORP);
   if (mbRet == node.ku8MBSuccess) ORPOffset = _ORP;
   return mbRet;
 }
 
 uint8_t Remond::setTemperatureUpperLimit(float _temperature) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_TEMPERATURE_UPPER_LIMIT, _temperature);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_TEMPERATURE_UPPER_LIMIT, _temperature);
   if (mbRet == node.ku8MBSuccess) temperatureUpperLimit = _temperature;
   return mbRet;
 }
 
 uint8_t Remond::setTemperatureLowerLimit(float _temperature) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_TEMPERATURE_LOWER_LIMIT, _temperature);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_TEMPERATURE_LOWER_LIMIT, _temperature);
   if (mbRet == node.ku8MBSuccess) temperatureLowerLimit = _temperature;
   return mbRet;
 }
 
 uint8_t Remond::setTemperatureOffset(float _temperature) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_TEMPERATURE_OFFSET, _temperature);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_TEMPERATURE_OFFSET, _temperature);
   if (mbRet == node.ku8MBSuccess) temperatureOffset = _temperature;
   return mbRet;
 }
 
 uint8_t Remond::setDampingCoefficient(uint16_t _dampingCoefficient) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_DAMPING_COEFFICIENT, mode);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_DAMPING_COEFFICIENT, mode);
   if (mbRet == node.ku8MBSuccess) dampingCoefficient = _dampingCoefficient;
   return mbRet;
 }
 
 uint8_t Remond::setDeviceAddress(uint16_t _deviceAddress) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_DEVICE_REM_ADDR, mode);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_DEVICE_ADDRESS, mode);
   if (mbRet == node.ku8MBSuccess) deviceAddress = _deviceAddress;
   return mbRet;
 }
 
 uint8_t Remond::setBaudRate(uint16_t _baudRate) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_BAUD_RATE, mode);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_BAUD_RATE, mode);
   if (mbRet == node.ku8MBSuccess) baudRate = _baudRate;
   return mbRet;
 }
 
 uint8_t Remond::setFactoryReset() {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_FACTORY_RESET, 1);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_FACTORY_RESET, 1);
   if (mbRet == node.ku8MBSuccess) log_w("Factory reset");
   return mbRet;
 }
 
 uint8_t Remond::setORPCalibrationValue(float _ORP) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_ORP_CALIBRATION_VALUE, _ORP);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_ORP_CALIBRATION_VALUE, _ORP);
   if (mbRet == node.ku8MBSuccess) ORPCalibrationValue = _ORP;
   return mbRet;
 }
 
 uint8_t Remond::setCalibrationSlope(float _calibrationSlope) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_CALIBRATION_SLOPE, _calibrationSlope);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_CALIBRATION_SLOPE, _calibrationSlope);
   if (mbRet == node.ku8MBSuccess) calibrationSlope = _calibrationSlope;
   return mbRet;
 }
 
 uint8_t Remond::setZeroPointCalibrationSolution(uint16_t _zeroPointCalibrationSolution) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_ZERO_POINT_CALIBRATION_SOLUTION, _zeroPointCalibrationSolution);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_ZERO_POINT_CALIBRATION_SOLUTION, _zeroPointCalibrationSolution);
   if (mbRet == node.ku8MBSuccess) zeroPointCalibrationSolution = _zeroPointCalibrationSolution;
   return mbRet;
 }
 
 uint8_t Remond::setSlopeCalibrationSolution(uint16_t _slopeCalibrationSolution) {
-  uint8_t mbRet = node.writeSingleRegister(REM_ADDR_OF_SLOPE_CALIBRATION_SOLUTION, _slopeCalibrationSolution);
+  uint8_t mbRet = node.writeSingleRegister(ADDRESS_OF_SLOPE_CALIBRATION_SOLUTION, _slopeCalibrationSolution);
   if (mbRet == node.ku8MBSuccess) slopeCalibrationSolution = _slopeCalibrationSolution;
   return mbRet;
 }
 
 uint8_t Remond::setManualTemperature(float _temperature) {
-  uint8_t mbRet = writeFloat(REM_ADDR_OF_MANUAL_TEMPERATURE, _temperature);
+  uint8_t mbRet = writeFloat(ADDRESS_OF_MANUAL_TEMPERATURE, _temperature);
   if (mbRet == node.ku8MBSuccess) manualTemperature = _temperature;
   return mbRet;
 }
 
 uint8_t Remond::calibrateZeroPoint() {
   uint16_t measuredAD;
-  uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_MEASURED_AD, 1, &measuredAD);
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MEASURED_AD, 1, &measuredAD);
   if (mbRet == node.ku8MBSuccess) {
-    mbRet = node.writeSingleRegister(REM_ADDR_OF_ZERO_CONFIRMATION, measuredAD);
+    mbRet = node.writeSingleRegister(ADDRESS_OF_ZERO_CONFIRMATION, measuredAD);
     if (mbRet == node.ku8MBSuccess) log_d("Zero point calibrated: %d", measuredAD);
   } else
     log_e("Zero calibration failed. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
@@ -314,9 +342,9 @@ uint8_t Remond::calibrateZeroPoint() {
 
 uint8_t Remond::calibrateSlope() {
   uint16_t measuredAD;
-  uint8_t mbRet = readHoldingRegisters(REM_ADDR_OF_MEASURED_AD, 1, &measuredAD);
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MEASURED_AD, 1, &measuredAD);
   if (mbRet == node.ku8MBSuccess) {
-    mbRet = node.writeSingleRegister(REM_ADDR_OF_SLOPE_CONFIRMATION, measuredAD);
+    mbRet = node.writeSingleRegister(ADDRESS_OF_SLOPE_CONFIRMATION, measuredAD);
     if (mbRet == node.ku8MBSuccess) log_d("Slope calibrated: %d", measuredAD);
   } else
     log_e("Slope calibration failed. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));

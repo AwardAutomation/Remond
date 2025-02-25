@@ -1,34 +1,6 @@
 #include <Arduino.h>
 #include <ModbusMaster.h>
 
-#define REM_ADDR_OF_PH 0x0001
-#define REM_ADDR_OF_TEMPERATURE 0x0003
-#define REM_ADDR_OF_CURRENT 0X0005
-#define REM_ADDR_OF_WARNING 0x0007          // 00 = no warning
-#define REM_ADDR_OF_MODE 0x0008             // 00 = pH, 01 = ORP
-#define REM_ADDR_OF_PH_UPPER_LIMIT 0x000A   // corresponds to 20mA upper limit
-#define REM_ADDR_OF_PH_LOWER_LIMIT 0x000C   // corresponds to 4mA lower limit
-#define REM_ADDR_OF_PH_OFFSET 0x0012        // adjust measured value
-#define REM_ADDR_OF_ORP_UPPER_LIMIT 0x000A  // corresponds to 20mA upper limit
-#define REM_ADDR_OF_ORP_LOWER_LIMIT 0x000C  // corresponds to 4mA lower limit
-#define REM_ADDR_OF_ORP_OFFSET 0x0012       // adjust measured value
-#define REM_ADDR_OF_TEMPERATURE_UPPER_LIMIT 0x000E
-#define REM_ADDR_OF_TEMPERATURE_LOWER_LIMIT 0x0010
-#define REM_ADDR_OF_TEMPERATURE_OFFSET 0x0014
-#define REM_ADDR_OF_DAMPING_COEFFICIENT 0x0016
-#define REM_ADDR_OF_DEVICE_REM_ADDR 0x0019
-#define REM_ADDR_OF_BAUD_RATE 0x001A
-#define REM_ADDR_OF_FACTORY_RESET 0x001B
-#define REM_ADDR_OF_ORP_CALIBRATION_VALUE 0x0030
-#define REM_ADDR_OF_CALIBRATION_SLOPE 0x0034
-#define REM_ADDR_OF_ZERO_POINT_CALIBRATION_SOLUTION 0x0036  // 00 = pH 7.00, 01 = pH 6.86
-#define REM_ADDR_OF_SLOPE_CALIBRATION_SOLUTION 0x0038       // 00 = pH 1.68, 01 = pH 4.01, 02 = 9.18, 03 = 10.01, 04 = 12.45
-#define REM_ADDR_OF_MANUAL_TEMPERATURE 0x003A
-#define REM_ADDR_OF_ZERO_CONFIRMATION 0x003E
-#define REM_ADDR_OF_SLOPE_CONFIRMATION 0x003F
-#define REM_ADDR_OF_MEASURED_AD 0x0066
-#define MIN_DELAY_BETWEEN_READS 5
-
 class Remond {
  public:
   Remond();
