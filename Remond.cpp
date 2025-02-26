@@ -44,10 +44,11 @@ bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void
   node.postTransmission(_postTransmission);
   uint8_t mbRet = readOtherParams();
   if (mbRet != node.ku8MBSuccess) {
-    log_w("Failed to read other parameters. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    log_w("Remond sensor failed to initialize. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
     ACTIVE = false;
     return false;
   }
+  log_i("Remond sensor initialized successfully");
   ACTIVE = true;
   delay(MIN_DELAY_BETWEEN_READS);
   readCalibrationParams();
