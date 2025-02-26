@@ -62,6 +62,13 @@ class Remond {
 
   bool ACTIVE = true;
 
+  static const uint16_t SUCCESS = 0x00;
+  static const uint16_t PH_HIGH = 0x01;
+  static const uint16_t PH_LOW = 0x02;
+  static const uint16_t TEMP_HIGH = 0x03;
+  static const uint16_t TEMP_LOW = 0x04;
+  static const uint16_t MODBUS_ERROR = 0x05;
+
  private:
   uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
   float readFloat(uint16_t address);

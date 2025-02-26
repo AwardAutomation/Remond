@@ -380,17 +380,17 @@ const char *Remond::getModbusErrorDescription(uint8_t errorCode) {
 
 const char *Remond::getWarningDescription(uint16_t warningCode) {
   switch (warningCode) {
-    case 0:
+    case SUCCESS:
       return "No warning";
-    case 1:
+    case PH_HIGH:
       return (mode == 1) ? "ORP upper limit exceeded" : "pH upper limit exceeded";
-    case 2:
+    case PH_LOW:
       return (mode == 1) ? "ORP lower limit exceeded" : "pH lower limit exceeded";
-    case 3:
+    case TEMP_HIGH:
       return "temp upper limit exceeded";
-    case 4:
+    case TEMP_LOW:
       return "temp lower limit exceeded";
-    case 5:
+    case MODBUS_ERROR:
       return "modbus error";
     default:
       return "Unknown warning";
