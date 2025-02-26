@@ -28,13 +28,19 @@
 #define ADDRESS_OF_MEASURED_AD 0x0066
 #define MIN_DELAY_BETWEEN_READS 5
 
+uint16_t Remond::indexCounter = 0;  // initialize the static member variable
+
 float regToFloat(uint16_t AB, uint16_t CD);
 uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len);
 
-Remond::Remond() {}
+Remond::Remond() {
+  // constructor
+  index = indexCounter++;
+}
 
 Remond::~Remond() {
-  // Destructor code here
+  // destructor
+  indexCounter--;
 }
 
 bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)()) {
@@ -44,11 +50,11 @@ bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void
   node.postTransmission(_postTransmission);
   uint8_t mbRet = readOtherParams();
   if (mbRet != node.ku8MBSuccess) {
-    log_w("Remond sensor failed to initialize. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    log_w("Remond sensor %d failed to initialize. Error: 0x%02X  %s", index + 1, mbRet, getModbusErrorDescription(mbRet));
     ACTIVE = false;
     return false;
   }
-  log_i("Remond sensor initialized successfully");
+  log_i("Remond sensor %d initialized successfully", index + 1);
   ACTIVE = true;
   delay(MIN_DELAY_BETWEEN_READS);
   readCalibrationParams();

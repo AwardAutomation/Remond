@@ -77,6 +77,8 @@ class Remond {
   uint32_t readInteger32(uint16_t address);
   uint8_t readOtherParams();
   uint8_t readCalibrationParams();
+  uint16_t index;
+  static uint16_t indexCounter;
 
   // uint8_t SLAVE_ID;
   ModbusMaster node;
