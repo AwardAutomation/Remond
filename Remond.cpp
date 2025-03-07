@@ -28,26 +28,33 @@
 #define ADDRESS_OF_MEASURED_AD 0x0066
 #define MIN_DELAY_BETWEEN_READS 5
 
+uint16_t Remond::indexCounter = 0;  // initialize the static member variable
+
 float regToFloat(uint16_t AB, uint16_t CD);
 uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len);
 
-Remond::Remond() {}
+Remond::Remond() {
+  // constructor
+  index = indexCounter++;
+}
 
 Remond::~Remond() {
-  // Destructor code here
+  // destructor
+  indexCounter--;
 }
 
 bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)()) {
-  SLAVE_ID = slaveID;
-  node.begin(SLAVE_ID, serial);
+  //SLAVE_ID = slaveID;
+  node.begin(slaveID, serial);
   node.preTransmission(_preTransmission);
   node.postTransmission(_postTransmission);
-  int8_t mbRet = readOtherParams();
+  uint8_t mbRet = readOtherParams();
   if (mbRet != node.ku8MBSuccess) {
-    log_w("Failed to read other parameters. Error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    log_w("Remond sensor %d failed to initialize. Error: 0x%02X  %s", index + 1, mbRet, getModbusErrorDescription(mbRet));
     ACTIVE = false;
     return false;
   }
+  log_i("Remond sensor %d initialized successfully", index + 1);
   ACTIVE = true;
   delay(MIN_DELAY_BETWEEN_READS);
   readCalibrationParams();
@@ -139,6 +146,7 @@ uint16_t Remond::readMeasurements() {
 
 uint8_t Remond::readOtherParams() {
   // read the next 19 registers starting from MODE
+  log_d("Reading other parameters from address: 0x%04X", ADDRESS_OF_MODE);
   uint16_t reg[19] = {0};
   uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MODE, 19, reg);
   if (mbRet == node.ku8MBSuccess) {
@@ -378,17 +386,17 @@ const char *Remond::getModbusErrorDescription(uint8_t errorCode) {
 
 const char *Remond::getWarningDescription(uint16_t warningCode) {
   switch (warningCode) {
-    case 0:
+    case SUCCESS:
       return "No warning";
-    case 1:
+    case PH_HIGH:
       return (mode == 1) ? "ORP upper limit exceeded" : "pH upper limit exceeded";
-    case 2:
+    case PH_LOW:
       return (mode == 1) ? "ORP lower limit exceeded" : "pH lower limit exceeded";
-    case 3:
+    case TEMP_HIGH:
       return "temp upper limit exceeded";
-    case 4:
+    case TEMP_LOW:
       return "temp lower limit exceeded";
-    case 5:
+    case MODBUS_ERROR:
       return "modbus error";
     default:
       return "Unknown warning";

@@ -6,19 +6,12 @@ class Remond {
   Remond();
   ~Remond();
   bool begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)());
-  uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
-  float readFloat(uint16_t address);
-  uint8_t writeFloat(uint16_t address, float value);
-  uint16_t readInteger16(uint16_t address);
-  uint32_t readInteger32(uint16_t address);
-
   uint16_t readMeasurements();
   float getpH() { return pH; }
   float getTemperature() { return temperature; }
   float getCurrent() { return current; }
   uint16_t getWarning() { return warning; }
 
-  uint8_t readOtherParams();
   char *getMode() { return modeDescription[mode]; }
   float getpHUpperLimit() { return pHUpperLimit; }
   float getpHLowerLimit() { return pHLowerLimit; }
@@ -33,13 +26,13 @@ class Remond {
   uint16_t getDeviceAddress() { return deviceAddress; }
   char *getBaudRate() { return baudDescription[baudRate]; }
 
-  uint8_t readCalibrationParams();
   float getORPCalibrationValue() { return ORPCalibrationValue; }
   float getCalibrationSlope() { return calibrationSlope; }
   char *getZeroPointCalibrationSolution() { return zeroPointCalibrationSolutionDescription[zeroPointCalibrationSolution]; }
   char *getSlopeCalibrationSolution() { return slopeCalibrationSolutionDescription[slopeCalibrationSolution]; }
   float getManualTemperature() { return manualTemperature; }
 
+  void setActive(bool state = true) { ACTIVE = state; }
   uint8_t setMode(uint8_t mode);
   uint8_t setpHUpperLimit(float pH);
   uint8_t setpHLowerLimit(float pH);
@@ -69,9 +62,25 @@ class Remond {
 
   bool ACTIVE = true;
 
+  static const uint16_t SUCCESS = 0x00;
+  static const uint16_t PH_HIGH = 0x01;
+  static const uint16_t PH_LOW = 0x02;
+  static const uint16_t TEMP_HIGH = 0x03;
+  static const uint16_t TEMP_LOW = 0x04;
+  static const uint16_t MODBUS_ERROR = 0x05;
+
  private:
-  
-  uint8_t SLAVE_ID;
+  uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
+  float readFloat(uint16_t address);
+  uint8_t writeFloat(uint16_t address, float value);
+  uint16_t readInteger16(uint16_t address);
+  uint32_t readInteger32(uint16_t address);
+  uint8_t readOtherParams();
+  uint8_t readCalibrationParams();
+  uint16_t index;
+  static uint16_t indexCounter;
+
+  // uint8_t SLAVE_ID;
   ModbusMaster node;
   float pH = -1.0, ORP = -1.0, temperature = -1.0, current = -1.0;
   float pHUpperLimit = -1.0, pHLowerLimit = -1.0, pHOffset = -1.0, ORPUpperLimit = -1.0, ORPLowerLimit = -1.0, ORPOffset = -1.0, temperatureUpperLimit = -1.0, temperatureLowerLimit = -1.0,
