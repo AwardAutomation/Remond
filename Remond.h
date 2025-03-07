@@ -25,6 +25,7 @@ class Remond {
   uint16_t getDampingCoefficient() { return dampingCoefficient; }
   uint16_t getDeviceAddress() { return deviceAddress; }
   char *getBaudRate() { return baudDescription[baudRate]; }
+  bool getActive() { return ACTIVE; }
 
   float getORPCalibrationValue() { return ORPCalibrationValue; }
   float getCalibrationSlope() { return calibrationSlope; }
@@ -60,8 +61,6 @@ class Remond {
   const char *getModbusErrorDescription(uint8_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
 
-  bool ACTIVE = true;
-
   static const uint16_t SUCCESS = 0x00;
   static const uint16_t PH_HIGH = 0x01;
   static const uint16_t PH_LOW = 0x02;
@@ -70,6 +69,7 @@ class Remond {
   static const uint16_t MODBUS_ERROR = 0x05;
 
  private:
+  bool ACTIVE = true;
   uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
   float readFloat(uint16_t address);
   uint8_t writeFloat(uint16_t address, float value);
