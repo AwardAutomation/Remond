@@ -5,4 +5,10 @@ AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: false
 ColumnLimit: 200
-BreakBeforeBraces: Attach
+BreakBeforeBraces: Custom
+BraceWrapping:
+  BeforeElse: true
+  BeforeCatch: true
+  BeforeWhile: true
+  BeforeDo: true
+  

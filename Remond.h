@@ -5,8 +5,9 @@ class Remond {
  public:
   Remond();
   ~Remond();
-  bool begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)());
+  bool begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)(), const char *name = "pH");
   uint16_t readMeasurements();
+  char *getName() { return NAME; }
   float getpH() { return pH; }
   float getTemperature() { return temperature; }
   float getCurrent() { return current; }
@@ -26,6 +27,7 @@ class Remond {
   uint16_t getDeviceAddress() { return deviceAddress; }
   char *getBaudRate() { return baudDescription[baudRate]; }
   bool getActive() { return ACTIVE; }
+  uint32_t getFailCount() { return READ_FAIL_COUNT; }
 
   float getORPCalibrationValue() { return ORPCalibrationValue; }
   float getCalibrationSlope() { return calibrationSlope; }
@@ -61,15 +63,15 @@ class Remond {
   const char *getModbusErrorDescription(uint8_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
 
-  static const uint16_t SUCCESS = 0x00;
-  static const uint16_t PH_HIGH = 0x01;
-  static const uint16_t PH_LOW = 0x02;
-  static const uint16_t TEMP_HIGH = 0x03;
-  static const uint16_t TEMP_LOW = 0x04;
-  static const uint16_t MODBUS_ERROR = 0x05;
+  static const uint16_t SUCCESS = 0x0000;
+  static const uint16_t PH_HIGH = 0x0100;
+  static const uint16_t PH_LOW = 0x0200;
+  static const uint16_t TEMP_HIGH = 0x0300;
+  static const uint16_t TEMP_LOW = 0x0400;
+  static const uint16_t MODBUS_ERROR = 0x0500;
 
  private:
-  bool ACTIVE = true;
+  bool ACTIVE = false;
   uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
   float readFloat(uint16_t address);
   uint8_t writeFloat(uint16_t address, float value);
@@ -78,6 +80,8 @@ class Remond {
   uint8_t readOtherParams();
   uint8_t readCalibrationParams();
   uint16_t index;
+  uint32_t READ_FAIL_COUNT;
+  char NAME[20] = {0};
   static uint16_t indexCounter;
 
   // uint8_t SLAVE_ID;
