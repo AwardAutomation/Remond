@@ -148,17 +148,17 @@ uint16_t Remond::readMeasurements() {
     current = regToFloat(reg[5], reg[4]);      // convert current to float
     warning = reg[6] << 8;                     // copy warning to upper byte of warning variable
     if (warning != 0) log_w("Warning: %s", getWarningDescription(warning));
-    log_d(
-        "reading successful \n"
-        "\treg[0] 0x%04X \n"
-        "\treg[1] 0x%04X \n"
-        "\treg[2] 0x%04X \n"
-        "\treg[3] 0x%04X \n"
-        "\treg[4] 0x%04X \n"
-        "\treg[5] 0x%04X \n"
-        "\treg[6] 0x%04X \n"
-        "\treg[7] 0x%04X",
-        reg[0], reg[1], reg[2], reg[3], reg[4], reg[5], reg[6], reg[7]);
+    // log_d(
+    //     "reading successful \n"
+    //     "\treg[0] 0x%04X \n"
+    //     "\treg[1] 0x%04X \n"
+    //     "\treg[2] 0x%04X \n"
+    //     "\treg[3] 0x%04X \n"
+    //     "\treg[4] 0x%04X \n"
+    //     "\treg[5] 0x%04X \n"
+    //     "\treg[6] 0x%04X \n"
+    //     "\treg[7] 0x%04X",
+    //     reg[0], reg[1], reg[2], reg[3], reg[4], reg[5], reg[6], reg[7]);
   }
   else {
     log_e("Modbus error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
@@ -411,7 +411,7 @@ uint8_t Remond::calibrateSlope() {
   return mbRet;
 }
 
-const char *Remond::getModbusErrorDescription(uint8_t errorCode) {
+const char *Remond::getModbusErrorDescription(uint16_t errorCode) {
   switch (errorCode) {
     case node.ku8MBSuccess:
       return "Success";

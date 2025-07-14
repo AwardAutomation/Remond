@@ -60,7 +60,8 @@ class Remond {
   uint8_t calibrateZeroPoint();
   uint8_t calibrateSlope();
 
-  const char *getModbusErrorDescription(uint8_t errorCode);
+  const char *getModbusErrorDescription() {return getModbusErrorDescription(warning);};
+  const char *getModbusErrorDescription(uint16_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
 
   static const uint16_t SUCCESS = 0x0000;
