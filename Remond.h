@@ -3,9 +3,10 @@
 
 class Remond {
  public:
-  Remond();
+  Remond(int8_t de_pin, void (*_preTransmission)(int8_t dePin, int8_t rePin), void (*_postTransmission)(int8_t dePin, int8_t rePin));
   ~Remond();
-  bool begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)(), const char *name = "pH");
+  bool begin(uint8_t slaveID, Stream &serial, const char *name = nullptr);
+  bool connect();
   uint16_t readMeasurements();
   char *getName() { return NAME; }
   float getpH() { return pH; }
@@ -35,7 +36,7 @@ class Remond {
   char *getSlopeCalibrationSolution() { return slopeCalibrationSolutionDescription[slopeCalibrationSolution]; }
   float getManualTemperature() { return manualTemperature; }
 
-  void setActive(bool state = true) { ACTIVE = state; }
+  void setActive(bool state = true) { if (DE_PIN > -1) ACTIVE = state; }
   uint8_t setMode(uint8_t mode);
   uint8_t setpHUpperLimit(float pH);
   uint8_t setpHLowerLimit(float pH);
@@ -60,7 +61,7 @@ class Remond {
   uint8_t calibrateZeroPoint();
   uint8_t calibrateSlope();
 
-  const char *getModbusErrorDescription() {return getModbusErrorDescription(warning);};
+  const char *getModbusErrorDescription() { return getModbusErrorDescription(warning); };
   const char *getModbusErrorDescription(uint16_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
 
@@ -70,8 +71,11 @@ class Remond {
   static const uint16_t TEMP_HIGH = 0x0300;
   static const uint16_t TEMP_LOW = 0x0400;
   static const uint16_t MODBUS_ERROR = 0x0500;
+  static const uint16_t NOT_EXIST = 0x0600;
 
  private:
+  int8_t DE_PIN = -1;
+  uint8_t SLAVE_ID;
   bool ACTIVE = false;
   uint8_t readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *data);
   float readFloat(uint16_t address);
@@ -80,10 +84,13 @@ class Remond {
   uint32_t readInteger32(uint16_t address);
   uint8_t readOtherParams();
   uint8_t readCalibrationParams();
+  static void setAllDEPins();
+
   uint16_t index;
   uint32_t READ_FAIL_COUNT;
-  char NAME[20] = {0};
+  char NAME[20] = "Remond";
   static uint16_t indexCounter;
+  static Remond* remonds[5];
 
   // uint8_t SLAVE_ID;
   ModbusMaster node;

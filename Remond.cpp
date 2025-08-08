@@ -29,13 +29,20 @@
 #define MIN_DELAY_BETWEEN_READS 5
 
 uint16_t Remond::indexCounter = 0;  // initialize the static member variable
+Remond *Remond::remonds[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
 
 float regToFloat(uint16_t AB, uint16_t CD);
 uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len);
 
-Remond::Remond() {
+Remond::Remond(int8_t de_pin, void (*_preTransmission)(int8_t dePin, int8_t rePin), void (*_postTransmission)(int8_t dePin, int8_t rePin)) {
   // constructor
-  index = indexCounter++;
+  DE_PIN = de_pin;                                        // capture the de pin for later use
+  index = indexCounter++;                                 // capture the index of this instance and increment the index counter
+  remonds[index] = this;                                  // capture the address of this instance
+  snprintf(NAME, sizeof(NAME), "%s%u", NAME, index + 1);  // default name contains the index (to that all sensor names are unique)
+  node.attachPins(de_pin);
+  node.preTransmission(_preTransmission);    // attach the callback for setting DE pin
+  node.postTransmission(_postTransmission);  // attach the callback for resetting the DE pin
 }
 
 Remond::~Remond() {
@@ -43,20 +50,25 @@ Remond::~Remond() {
   indexCounter--;
 }
 
-bool Remond::begin(int slaveID, Stream &serial, void (*_preTransmission)(), void (*_postTransmission)(), const char *name) {
-  // SLAVE_ID = slaveID;
-  snprintf(NAME, sizeof(NAME), "%s%u", name, index + 1);  // note index is zero based
-  node.begin(slaveID, serial);
-  node.preTransmission(_preTransmission);
-  node.postTransmission(_postTransmission);
+bool Remond::begin(uint8_t slaveID, Stream &serial, const char *name) {
+  if (DE_PIN == -1) return false;  // port does not exist
+  setAllDEPins();
+  SLAVE_ID = slaveID;                                               // make sure none of the other re pins are ative
+  if (name) snprintf(NAME, sizeof(NAME), "%s%u", name, index + 1);  // note index is zero based
+  node.begin(SLAVE_ID, serial);
+  return connect();
+}
+
+bool Remond::connect() {
+  if (DE_PIN == -1) return false;
   ACTIVE = true;
   uint8_t mbRet = readOtherParams();
   if (mbRet != node.ku8MBSuccess) {
-    log_e("Remond sensor %d slaveID %d failed to initialize. Error: 0x%02X  %s", index + 1, slaveID, mbRet, getModbusErrorDescription(mbRet));
+    log_e("%s slaveID %d failed to initialize. Error: 0x%02X  %s", NAME, SLAVE_ID, mbRet, getModbusErrorDescription(mbRet));
     ACTIVE = false;
     return false;
   }
-  log_i("Remond sensor %d initialized successfully", index + 1);
+  log_i("%s initialized successfully", NAME);
   ACTIVE = true;
   READ_FAIL_COUNT = 0;
   delay(MIN_DELAY_BETWEEN_READS);
@@ -130,6 +142,7 @@ uint32_t Remond::readInteger32(uint16_t address) {
 }
 
 uint16_t Remond::readMeasurements() {
+  if (DE_PIN == -1) return NOT_EXIST;
   if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
   // read the first 8 registers
   uint16_t reg[8] = {0};
@@ -171,7 +184,7 @@ uint16_t Remond::readMeasurements() {
 uint8_t Remond::readOtherParams() {
   if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
   // read the next 19 registers starting from MODE
-  log_d("Remond %u: Reading other parameters from address: 0x%04X", index, ADDRESS_OF_MODE);
+  log_d("%s: Reading other parameters from address: 0x%04X", NAME, ADDRESS_OF_MODE);
   uint16_t reg[19] = {0};
   uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MODE, 19, reg);
   if (mbRet == node.ku8MBSuccess) {
@@ -450,6 +463,8 @@ const char *Remond::getWarningDescription(uint16_t warningCode) {
       return "temp lower limit exceeded";
     case MODBUS_ERROR:
       return "modbus error";
+    case NOT_EXIST:
+      return "port does not exist";
     default:
       return "Unknown warning";
   }
@@ -473,4 +488,12 @@ uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len) {
   reg[0] = temp & 0xFFFF;
   reg[1] = temp >> 16;
   return reg;
+}
+
+// set all the de pins of this object type, (connected to RE pin which is active low)
+void Remond::setAllDEPins() {
+  for (int i = 0; i < indexCounter; i++) {
+    pinMode(remonds[i]->DE_PIN, OUTPUT);
+    digitalWrite(remonds[i]->DE_PIN, HIGH);
+  }
 }
