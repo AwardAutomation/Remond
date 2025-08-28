@@ -28,21 +28,39 @@
 #define ADDRESS_OF_MEASURED_AD 0x0066
 #define MIN_DELAY_BETWEEN_READS 5
 
+#define ADDRESS_OF_EC 0X0000
+#define ADDRESS_DO_FIRST 0X0011
+
 uint16_t Remond::indexCounter = 0;  // initialize the static member variable
 Remond *Remond::remonds[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
 
 float regToFloat(uint16_t AB, uint16_t CD);
 uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len);
 
-Remond::Remond(int8_t de_pin, void (*_preTransmission)(int8_t dePin, int8_t rePin), void (*_postTransmission)(int8_t dePin, int8_t rePin)) {
+// Remond::Remond(int8_t de_pin) {
+//   // constructor
+//   DE_PIN = de_pin;                                        // capture the de pin for later use
+//   index = indexCounter++;                                 // capture the index of this instance and increment the index counter
+//   remonds[index] = this;                                  // capture the address of this instance
+//   snprintf(NAME, sizeof(NAME), "%s%u", NAME, index + 1);  // default name contains the index (to that all sensor names are unique)
+//   node.attachPins(de_pin);
+//   void (*pre)(int8_t, int8_t) = setThisDEPin;
+//   void (*post)(int8_t, int8_t) = resetThisDEPin;
+//   node.preTransmission(pre);    // attach the callback for setting DE pin
+//   node.postTransmission(post);  // attach the callback for resetting the DE pin
+// }
+Remond::Remond(int8_t de_pin) {
   // constructor
   DE_PIN = de_pin;                                        // capture the de pin for later use
   index = indexCounter++;                                 // capture the index of this instance and increment the index counter
   remonds[index] = this;                                  // capture the address of this instance
   snprintf(NAME, sizeof(NAME), "%s%u", NAME, index + 1);  // default name contains the index (to that all sensor names are unique)
-  node.attachPins(de_pin);
-  node.preTransmission(_preTransmission);    // attach the callback for setting DE pin
-  node.postTransmission(_postTransmission);  // attach the callback for resetting the DE pin
+  // node.attachInstance(this);
+  void (*pre)(void *) = preTransmission;
+  void (*post)(void *) = postTransmission;
+  if (DE_PIN > -1) pinMode(DE_PIN, OUTPUT);
+  node.preTransmission(pre, this);    // attach the callback for setting DE pin
+  node.postTransmission(post, this);  // attach the callback for resetting the DE pin
 }
 
 Remond::~Remond() {
@@ -52,46 +70,46 @@ Remond::~Remond() {
 
 bool Remond::begin(uint8_t slaveID, Stream &serial, const char *name) {
   if (DE_PIN == -1) return false;  // port does not exist
-  setAllDEPins();
-  SLAVE_ID = slaveID;                                               // make sure none of the other re pins are ative
-  if (name) snprintf(NAME, sizeof(NAME), "%s%u", name, index + 1);  // note index is zero based
-  node.begin(SLAVE_ID, serial);
-  return connect();
-}
-
-bool Remond::connect() {
-  if (DE_PIN == -1) return false;
-  ACTIVE = true;
-  uint8_t mbRet = readOtherParams();
-  if (mbRet != node.ku8MBSuccess) {
-    log_e("%s slaveID %d failed to initialize. Error: 0x%02X  %s", NAME, SLAVE_ID, mbRet, getModbusErrorDescription(mbRet));
-    ACTIVE = false;
-    return false;
-  }
-  log_i("%s initialized successfully", NAME);
+  ModbusMaster::setTimeout(100);
+  SLAVE_ID = slaveID;
   ACTIVE = true;
   READ_FAIL_COUNT = 0;
-  delay(MIN_DELAY_BETWEEN_READS);
-  readCalibrationParams();
-  delay(MIN_DELAY_BETWEEN_READS);
-  readMeasurements();
-  delay(MIN_DELAY_BETWEEN_READS);
+  if (name) snprintf(NAME, sizeof(NAME), "%s%u", name, index + 1);  // note index is zero based
+  node.begin(SLAVE_ID, serial);
+  // attempt to read the first register
+  uint16_t reg[2] = {0};
+  uint8_t mbRet;
+  while (SLAVE_ID <= 3) {
+    mbRet = readHoldingRegisters(0x0000, 2, reg);
+    if (mbRet == node.ku8MBSuccess) break;
+    log_e("%s slaveID %d failed to initialize. Error: 0x%02X  %s", NAME, SLAVE_ID, mbRet, getModbusErrorDescription(mbRet));
+    node.begin(++SLAVE_ID, serial);
+    if (SLAVE_ID == 3) {
+      log_e("slaveID not found");
+      ACTIVE = false;
+      return false;
+    }
+    delay(100);
+  }
+  log_i("%s initialized successfully with slave ID %u", NAME, SLAVE_ID);
+
   return true;
 }
 
 uint8_t Remond::readHoldingRegisters(uint16_t address, uint16_t quantity, uint16_t *reg) {
   if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
-  uint8_t mbRet = node.readHoldingRegisters(address, quantity);
-  // delay(10);  // wait for the data to be available
+  char sent[256] = {0};
+  char rec[256] = {0};
+  uint8_t mbRet = node.readHoldingRegisters(address, quantity, sent, sizeof(sent), rec, sizeof(rec));
+  delay(10);  // wait for the data to be available
   if (mbRet == node.ku8MBSuccess) {
     for (int i = 0; i < quantity; i++) {
       reg[i] = node.getResponseBuffer(i);
-      // log_d("Data[%d]: 0x%04X", i, reg[i]);  // print the 16bit reg
     }
-    // log_d("holding register 0x%04X: mbRet 0x%02X %s \t Bytes available: %d", address, mbRet, getModbusErrorDescription(mbRet), node.available());  // report the number of bytes available
+    // log_d("port %u sent %s \t received %s", index + 1, sent, rec);  // print the sent ADU
   }
   else {
-    log_e("Failed to read holding register 0x%04X. Error: 0x%02X  %s", address, mbRet, getModbusErrorDescription(mbRet));
+    log_e("port %u read failed. Sent: %s \t Error: 0x%02X  %s", index + 1, sent, mbRet, getModbusErrorDescription(mbRet));
   }
   return mbRet;
 }
@@ -141,7 +159,7 @@ uint32_t Remond::readInteger32(uint16_t address) {
   return ret;
 }
 
-uint16_t Remond::readMeasurements() {
+uint16_t Remond::readMeasurementsPH() {
   if (DE_PIN == -1) return NOT_EXIST;
   if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
   // read the first 8 registers
@@ -157,9 +175,9 @@ uint16_t Remond::readMeasurements() {
       ORP = regToFloat(reg[1], reg[0]);  // convert ORP to float
       pH = 0.0;                          // set pH to 0 if mode is ORP
     }
-    temperature = regToFloat(reg[3], reg[2]);  // convert temperature to float
-    current = regToFloat(reg[5], reg[4]);      // convert current to float
-    warning = reg[6] << 8;                     // copy warning to upper byte of warning variable
+    temperaturePH = regToFloat(reg[3], reg[2]);  // convert temperature to float
+    current = regToFloat(reg[5], reg[4]);        // convert current to float
+    warning = reg[6] << 8;                       // copy warning to upper byte of warning variable
     if (warning != 0) log_w("Warning: %s", getWarningDescription(warning));
     // log_d(
     //     "reading successful \n"
@@ -181,10 +199,49 @@ uint16_t Remond::readMeasurements() {
   return warning;
 }
 
+uint16_t Remond::readMeasurementsEC() {
+  if (DE_PIN == -1) return NOT_EXIST;
+  if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
+  // read the first 10 registers
+  uint16_t reg[10] = {0};
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_EC, 10, reg);
+  if (mbRet == node.ku8MBSuccess) {
+    EC = regToFloat(reg[1], reg[0]);             // convert EC to float (mS/cm)
+    EC = EC * 100;                              // convert to mS/m)
+    resistivity = regToFloat(reg[3], reg[2]);    // convert resistivity to float
+    temperatureEC = regToFloat(reg[5], reg[4]);  // convert temperature to float
+    TDS = regToFloat(reg[7], reg[6]);            // convert TDS to float
+    salinity = regToFloat(reg[9], reg[8]);       // convert salinity to float
+  }
+  else {
+    log_e("EC modbus error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    READ_FAIL_COUNT++;
+  }
+  return mbRet;
+}
+
+uint16_t Remond::readMeasurementsDO() {
+  if (DE_PIN == -1) return NOT_EXIST;
+  if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
+  // read the first 6 registers
+  uint16_t reg[6] = {0};
+  uint8_t mbRet = readHoldingRegisters(ADDRESS_DO_FIRST, 6, reg);
+  if (mbRet == node.ku8MBSuccess) {
+    temperatureDO = reg[0] / 100.0;  // temp comes from a single integer register
+    DO_SAT = reg[1] / 100.0;
+    DO_CON = reg[3] / 100.0;
+  }
+  else {
+    log_e("Modbus error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
+    READ_FAIL_COUNT++;
+  }
+  return mbRet;
+}
+
 uint8_t Remond::readOtherParams() {
   if (!ACTIVE) return node.ku8MBSlaveDeviceFailure;
   // read the next 19 registers starting from MODE
-  log_d("%s: Reading other parameters from address: 0x%04X", NAME, ADDRESS_OF_MODE);
+  // log_d("%s: Reading other parameters from address: 0x%04X", NAME, ADDRESS_OF_MODE);
   uint16_t reg[19] = {0};
   uint8_t mbRet = readHoldingRegisters(ADDRESS_OF_MODE, 19, reg);
   if (mbRet == node.ku8MBSuccess) {
@@ -238,6 +295,10 @@ uint8_t Remond::readCalibrationParams() {
     log_e("Modbus error: 0x%02X  %s", mbRet, getModbusErrorDescription(mbRet));
   }
   return mbRet;
+}
+
+void Remond::setActive(bool state) {
+  if (DE_PIN > -1) ACTIVE = state;
 }
 
 // 0x00 = pH, 0x01 = ORP
@@ -490,10 +551,22 @@ uint16_t *floatToReg(float floatValue, uint16_t *reg, size_t len) {
   return reg;
 }
 
-// set all the de pins of this object type, (connected to RE pin which is active low)
-void Remond::setAllDEPins() {
+void Remond::preTransmission(void *instance) {
+  Remond *self = static_cast<Remond *>(instance);
+  // cycle through all instances of this class
   for (int i = 0; i < indexCounter; i++) {
-    pinMode(remonds[i]->DE_PIN, OUTPUT);
+    if (remonds[i]->DE_PIN == -1) continue;;
+    digitalWrite(remonds[i]->DE_PIN, LOW);
+  }
+  digitalWrite(self->DE_PIN, HIGH);
+}
+
+void Remond::postTransmission(void *instance) {
+  Remond *self = static_cast<Remond *>(instance);
+  // cycle through all instances of this class
+  for (int i = 0; i < indexCounter; i++) {
+    if (remonds[i]->DE_PIN == -1) continue;
     digitalWrite(remonds[i]->DE_PIN, HIGH);
   }
+  digitalWrite(self->DE_PIN, LOW);
 }

@@ -3,14 +3,24 @@
 
 class Remond {
  public:
-  Remond(int8_t de_pin, void (*_preTransmission)(int8_t dePin, int8_t rePin), void (*_postTransmission)(int8_t dePin, int8_t rePin));
+  Remond(int8_t de_pin);
   ~Remond();
   bool begin(uint8_t slaveID, Stream &serial, const char *name = nullptr);
-  bool connect();
-  uint16_t readMeasurements();
+  bool portExists() { return DE_PIN == -1 ? false : true; }
+  uint16_t readMeasurementsPH();
+  uint16_t readMeasurementsEC();
+  uint16_t readMeasurementsDO();
   char *getName() { return NAME; }
   float getpH() { return pH; }
-  float getTemperature() { return temperature; }
+  float getEC() { return EC; }
+  float getRes() { return resistivity; }
+  float getTDS() { return TDS; }
+  float getSal() { return salinity; }
+  float getTemperaturePH() { return temperaturePH; }
+  float getTemperatureEC() { return temperatureEC; }
+  float getTemperatureDO() { return temperatureDO; }
+  float getDoSat() { return DO_SAT; }
+  float getDoCon() { return DO_CON; }
   float getCurrent() { return current; }
   uint16_t getWarning() { return warning; }
 
@@ -36,7 +46,7 @@ class Remond {
   char *getSlopeCalibrationSolution() { return slopeCalibrationSolutionDescription[slopeCalibrationSolution]; }
   float getManualTemperature() { return manualTemperature; }
 
-  void setActive(bool state = true) { if (DE_PIN > -1) ACTIVE = state; }
+  void setActive(bool state = true);
   uint8_t setMode(uint8_t mode);
   uint8_t setpHUpperLimit(float pH);
   uint8_t setpHLowerLimit(float pH);
@@ -61,6 +71,9 @@ class Remond {
   uint8_t calibrateZeroPoint();
   uint8_t calibrateSlope();
 
+  uint8_t readOtherParams();
+  uint8_t readCalibrationParams();
+
   const char *getModbusErrorDescription() { return getModbusErrorDescription(warning); };
   const char *getModbusErrorDescription(uint16_t errorCode);
   const char *getWarningDescription(uint16_t warningCode);
@@ -82,19 +95,23 @@ class Remond {
   uint8_t writeFloat(uint16_t address, float value);
   uint16_t readInteger16(uint16_t address);
   uint32_t readInteger32(uint16_t address);
-  uint8_t readOtherParams();
-  uint8_t readCalibrationParams();
-  static void setAllDEPins();
+
+  // static void setThisDEPin(int8_t dePin, int8_t rePin);
+  // static void resetThisDEPin(int8_t dePin, int8_t rePin);
+  static void preTransmission(void *instance);
+  static void postTransmission(void *instance);
 
   uint16_t index;
   uint32_t READ_FAIL_COUNT;
   char NAME[20] = "Remond";
   static uint16_t indexCounter;
-  static Remond* remonds[5];
+  static Remond *remonds[5];
 
   // uint8_t SLAVE_ID;
   ModbusMaster node;
-  float pH = -1.0, ORP = -1.0, temperature = -1.0, current = -1.0;
+  float pH = -1.0, ORP = -1.0, temperaturePH = -1.0, current = -1.0;
+  float EC = -1.0, temperatureEC = -1.0, resistivity = -1, TDS = -1, salinity = -1;
+  float DO_SAT = -1.0, DO_CON = -1.0, temperatureDO = -1.0;
   float pHUpperLimit = -1.0, pHLowerLimit = -1.0, pHOffset = -1.0, ORPUpperLimit = -1.0, ORPLowerLimit = -1.0, ORPOffset = -1.0, temperatureUpperLimit = -1.0, temperatureLowerLimit = -1.0,
         temperatureOffset = -1.0, ORPCalibrationValue = -1.0, calibrationSlope = 0, manualTemperature = -1.0;
   uint16_t dampingCoefficient = 0, deviceAddress = 0, baudRate = 5, zeroPointCalibrationSolution = 2, slopeCalibrationSolution = 5, measuredAD = 0;
